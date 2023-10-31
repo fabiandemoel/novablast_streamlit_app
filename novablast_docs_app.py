@@ -60,9 +60,7 @@ class PrintRetrievalHandler(BaseCallbackHandler):
             self.status.markdown(doc.page_content)
         self.status.update(state="complete")
 
-# openai_api_key = st.secrets['OPENAI_API_KEY']
-with st.sidebar:
-    openai_api_key = st.text_input("OpenAI API Key", type="password")
+openai_api_key = st.secrets['OPENAI_API_KEY']
 
 retriever = configure_retriever()
 
