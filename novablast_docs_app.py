@@ -23,7 +23,7 @@ def configure_retriever():
 
     with open("vectorstore.pkl", "rb") as f:
         vectorstore = pickle.load(f)
-    retriever = VectorStoreRetriever(vectorstore=vectorstore)
+    retriever = VectorStoreRetriever(vectorstore=vectorstore, search_type="mmr", search_kwargs={"k": 2, "fetch_k": 4})
     return retriever
 
 
