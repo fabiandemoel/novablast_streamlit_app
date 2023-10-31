@@ -5,3 +5,4 @@ sentence-transformers==2.2.2
 streamlit==1.28.0
 tiktoken==0.3.2
 faiss-cpu==1.7.4
+pypdf==3.16.4
