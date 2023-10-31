@@ -8,6 +8,9 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
 from langchain.vectorstores import FAISS
 from langchain.vectorstores.base import VectorStoreRetriever
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.document_loaders import PyPDFDirectoryLoader
+from langchain.text_splitter import CharacterTextSplitter
 import pickle
 
 st.set_page_config(page_title="NovaBlast: Ask your Blasting question", page_icon="🦜")
@@ -21,9 +24,20 @@ st.title("Ask your Blasting question")
 
 def configure_retriever():
 
-    with open("vectorstore.pkl", "rb") as f:
-        vectorstore = pickle.load(f)
-    retriever = VectorStoreRetriever(vectorstore=vectorstore, search_type="mmr", search_kwargs={"k": 2, "fetch_k": 4})
+    # Load the pdfs from the documents directory
+    loader = PyPDFDirectoryLoader("documents/")
+    docs = loader.load()
+
+    # Split the text into chunks
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+    texts = text_splitter.split_documents(docs)
+
+    # Create an embeddings db
+    embeddings = OpenAIEmbeddings()
+    db = FAISS.from_documents(texts, embeddings)
+
+    retriever = VectorStoreRetriever(vectorstore=db, search_type="mmr", search_kwargs={"k": 2, "fetch_k": 4})
+
     return retriever
 
 
@@ -70,7 +84,7 @@ memory = ConversationBufferMemory(memory_key="chat_history", return_messages=Tru
 
 # Setup LLM and QA chain
 llm = ChatOpenAI(
-    model_name="gpt-3.5-turbo-16k", temperature=0, streaming=True, openai_api_key=openai_api_key
+    model_name="gpt-3.5-turbo-16k", temperature=0, streaming=True #, openai_api_key=openai_api_key
 )
 qa_chain = ConversationalRetrievalChain.from_llm(
     llm, retriever=retriever, memory=memory, verbose=True
