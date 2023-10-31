@@ -60,7 +60,7 @@ class PrintRetrievalHandler(BaseCallbackHandler):
             self.status.markdown(doc.page_content)
         self.status.update(state="complete")
 
-os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
+openai_api_key = st.secrets['OPENAI_API_KEY']
 
 retriever = configure_retriever()
 
@@ -70,7 +70,7 @@ memory = ConversationBufferMemory(memory_key="chat_history", return_messages=Tru
 
 # Setup LLM and QA chain
 llm = ChatOpenAI(
-    model_name="gpt-3.5-turbo-16k", temperature=0, streaming=True
+    model_name="gpt-3.5-turbo-16k", temperature=0, streaming=True, openai_api_key=openai_api_key
 )
 qa_chain = ConversationalRetrievalChain.from_llm(
     llm, retriever=retriever, memory=memory, verbose=True
