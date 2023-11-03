@@ -31,6 +31,11 @@ def retrieve_documents(connection_string):
     # Get files from 
     local_path = os.getcwd()
     download_path = os.path.join(local_path, 'tmp')
+    try:
+        os.mkdir('path')
+    except:
+        pass
+
     for blob in container_client.list_blobs():
         download_file_path = os.path.join(download_path, blob.name)
         with open(file=download_file_path, mode="wb") as download_file:
