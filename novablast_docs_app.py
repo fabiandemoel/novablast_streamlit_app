@@ -42,8 +42,10 @@ def retrieve_documents(connection_string):
 def configure_retriever(temp_dir):
 
     # Load the pdfs from the documents directory
-    loader = PyPDFDirectoryLoader("tmp/")
+    loader = PyPDFDirectoryLoader(temp_dir)
     docs = loader.load()
+
+    print(len(docs))
 
     # Split the text into chunks
     text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
@@ -91,11 +93,14 @@ class PrintRetrievalHandler(BaseCallbackHandler):
             self.status.markdown(doc.page_content)
         self.status.update(state="complete")
 
-connection_string = st.secrets['BLOB_CONNECTION_STRING']
+# connection_string = st.secrets['BLOB_CONNECTION_STRING']
+connection_string = "DefaultEndpointsProtocol=https;AccountName=streamlitsa;AccountKey=x7krq3nHIRL0lQNFkPSU/LZ7kc4nTVFoEmfN8uvszGsYb2DEMGyl9mpl6XxChHdO5jgvf+DwsCKL+AStXADmOA==;EndpointSuffix=core.windows.net"
 
 temp_dir = retrieve_documents(connection_string)
 
-openai_api_key = st.secrets['OPENAI_API_KEY']
+# openai_api_key = st.secrets['OPENAI_API_KEY']
+# openai_api_key = "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"
+os.environ['OPENAI_API_KEY'] = "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"
 
 retriever = configure_retriever(temp_dir)
 
