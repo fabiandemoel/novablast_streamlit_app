@@ -13,6 +13,7 @@ from langchain.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import CharacterTextSplitter
 from azure.storage.blob import BlobServiceClient
 import pickle
+import tempfile
 
 st.set_page_config(page_title="NovaBlast: Ask your Blasting question", page_icon="🦜")
 image = Image.open('novablast_logo.png')
@@ -28,20 +29,17 @@ def retrieve_documents(connection_string):
     service = BlobServiceClient.from_connection_string(connection_string)
     container_client = service.get_container_client("streamlit-docs")
 
-    # Get files from 
-    local_path = os.getcwd()
-    download_path = os.path.join(local_path, 'tmp')
-    try:
-        os.mkdir('path')
-    except:
-        pass
+    temp_dir = tempfile.mkdtemp()
 
+    # Get files from Blob
     for blob in container_client.list_blobs():
-        download_file_path = os.path.join(download_path, blob.name)
+        download_file_path = os.path.join(temp_dir, blob.name)
         with open(file=download_file_path, mode="wb") as download_file:
             download_file.write(container_client.download_blob(blob.name).readall())
 
-def configure_retriever():
+    return temp_dir
+
+def configure_retriever(temp_dir):
 
     # Load the pdfs from the documents directory
     loader = PyPDFDirectoryLoader("tmp/")
@@ -95,11 +93,11 @@ class PrintRetrievalHandler(BaseCallbackHandler):
 
 connection_string = st.secrets['BLOB_CONNECTION_STRING']
 
-retrieve_documents(connection_string)
+temp_dir = retrieve_documents(connection_string)
 
 openai_api_key = st.secrets['OPENAI_API_KEY']
 
-retriever = configure_retriever()
+retriever = configure_retriever(temp_dir)
 
 # Setup memory for contextual conversation
 msgs = StreamlitChatMessageHistory()
