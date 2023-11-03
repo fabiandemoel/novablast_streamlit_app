@@ -11,6 +11,7 @@ from langchain.vectorstores.base import VectorStoreRetriever
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import CharacterTextSplitter
+from azure.storage.blob import BlobServiceClient
 import pickle
 
 st.set_page_config(page_title="NovaBlast: Ask your Blasting question", page_icon="🦜")
@@ -22,10 +23,23 @@ st.title("Ask your Blasting question")
 
 @st.cache_resource(ttl="1h")
 
+def retrieve_documents(connection_string):
+
+    service = BlobServiceClient.from_connection_string(connection_string)
+    container_client = service.get_container_client("streamlit-docs")
+
+    # Get files from 
+    local_path = os.getcwd()
+    download_path = os.path.join(local_path, 'tmp')
+    for blob in container_client.list_blobs():
+        download_file_path = os.path.join(download_path, blob.name)
+        with open(file=download_file_path, mode="wb") as download_file:
+            download_file.write(container_client.download_blob(blob.name).readall())
+
 def configure_retriever():
 
     # Load the pdfs from the documents directory
-    loader = PyPDFDirectoryLoader("documents/")
+    loader = PyPDFDirectoryLoader("tmp/")
     docs = loader.load()
 
     # Split the text into chunks
@@ -73,6 +87,10 @@ class PrintRetrievalHandler(BaseCallbackHandler):
             self.status.write(f"**Document {idx} from {source}**")
             self.status.markdown(doc.page_content)
         self.status.update(state="complete")
+
+connection_string = st.secrets['BLOB_CONNECTION_STRING']
+
+retrieve_documents(connection_string)
 
 openai_api_key = st.secrets['OPENAI_API_KEY']
 
