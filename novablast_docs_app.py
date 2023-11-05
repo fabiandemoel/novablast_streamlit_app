@@ -9,7 +9,6 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.retrievers import AzureCognitiveSearchRetriever
 
 from typing import List
-import requests
 
 st.set_page_config(page_title="NovaBlast: Ask your Blasting question", page_icon="🦜")
 image = Image.open('novablast_logo.png')
@@ -20,9 +19,10 @@ st.title("Ask your Blasting question")
 @st.cache_resource(ttl="1h")
 def configure_retriever():
 
-    os.environ["AZURE_COGNITIVE_SEARCH_SERVICE_NAME"] = "novablast-search"
-    os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = "azureblob-index"
-    os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = "F5bOa1aL6MJNIsJDMqzf9dJeGT8VxSWpQBRl3TYAGFAzSeAdZPQQ"
+    # Set secrets through Streamlit
+    # os.environ["AZURE_COGNITIVE_SEARCH_SERVICE_NAME"] = st.secrets['AZURE_COGNITIVE_SEARCH_SERVICE_NAME']
+    # os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets['AZURE_COGNITIVE_SEARCH_INDEX_NAME']
+    # os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets['AZURE_COGNITIVE_SEARCH_API_KEY']
 
     retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=4)
 
@@ -61,7 +61,8 @@ class PrintRetrievalHandler(BaseCallbackHandler):
             self.status.markdown(doc.page_content)
         self.status.update(state="complete")
 
-os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
+# Set env variables through Streamlit
+# os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
 
 retriever = configure_retriever()
 
