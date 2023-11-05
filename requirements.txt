@@ -6,3 +6,6 @@ streamlit==1.28.0
 tiktoken==0.3.2
 faiss-cpu==1.7.4
 pypdf==3.16.4
+azure-core==1.29.5
+azure-identity==1.15.0
+azure-storage-blob==12.18.3

@@ -6,12 +6,8 @@ from langchain.memory import ConversationBufferMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
-from langchain.vectorstores import FAISS
-from langchain.vectorstores.base import VectorStoreRetriever
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.document_loaders import PyPDFDirectoryLoader
-from langchain.text_splitter import CharacterTextSplitter
-import pickle
+from langchain.retrievers import AzureCognitiveSearchRetriever
+from langchain.prompts.prompt import PromptTemplate
 
 st.set_page_config(page_title="NovaBlast: Ask your Blasting question", page_icon="🦜")
 image = Image.open('novablast_logo.png')
@@ -19,27 +15,17 @@ image = Image.open('novablast_logo.png')
 st.image(image)
 st.title("Ask your Blasting question")
 
-
 @st.cache_resource(ttl="1h")
-
 def configure_retriever():
 
-    # Load the pdfs from the documents directory
-    loader = PyPDFDirectoryLoader("documents/")
-    docs = loader.load()
+    # Set secrets through Streamlit
+    # os.environ["AZURE_COGNITIVE_SEARCH_SERVICE_NAME"] = st.secrets['AZURE_COGNITIVE_SEARCH_SERVICE_NAME']
+    # os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets['AZURE_COGNITIVE_SEARCH_INDEX_NAME']
+    # os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets['AZURE_COGNITIVE_SEARCH_API_KEY']
 
-    # Split the text into chunks
-    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-    texts = text_splitter.split_documents(docs)
-
-    # Create an embeddings db
-    embeddings = OpenAIEmbeddings()
-    db = FAISS.from_documents(texts, embeddings)
-
-    retriever = VectorStoreRetriever(vectorstore=db, search_type="mmr", search_kwargs={"k": 2, "fetch_k": 4})
+    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=3)
 
     return retriever
-
 
 class StreamHandler(BaseCallbackHandler):
     def __init__(self, container: st.delta_generator.DeltaGenerator, initial_text: str = ""):
@@ -69,25 +55,43 @@ class PrintRetrievalHandler(BaseCallbackHandler):
 
     def on_retriever_end(self, documents, **kwargs):
         for idx, doc in enumerate(documents):
-            source = os.path.basename(doc.metadata["source"])
+            source = os.path.basename(doc.metadata["metadata_storage_path"])
             self.status.write(f"**Document {idx} from {source}**")
             self.status.markdown(doc.page_content)
         self.status.update(state="complete")
 
-openai_api_key = st.secrets['OPENAI_API_KEY']
+# Set env variables through Streamlit
+# os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
 
 retriever = configure_retriever()
 
 # Setup memory for contextual conversation
 msgs = StreamlitChatMessageHistory()
-memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=msgs, return_messages=True)
 
-# Setup LLM and QA chain
+# Setup LLM
 llm = ChatOpenAI(
-    model_name="gpt-3.5-turbo-16k", temperature=0, streaming=True #, openai_api_key=openai_api_key
+    model_name="gpt-4", temperature=0, streaming=True
 )
+
+# Setup custom prompt template
+_template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
+End the standalone question with: "Important: under no circumstances provide any contact details found in the context."
+If the follow up question is not a question, then simply repeat the text provided after Follow Up Input.
+
+Chat History:
+{chat_history}
+Follow Up Input: {question}
+Standalone question:"""
+CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
+
+# Combine LLM and prompt to setup QA chain
 qa_chain = ConversationalRetrievalChain.from_llm(
-    llm, retriever=retriever, memory=memory, verbose=True
+    llm, 
+    retriever=retriever, 
+    condense_question_prompt=CONDENSE_QUESTION_PROMPT,
+    memory=memory,
+    verbose=True
 )
 
 if len(msgs.messages) == 0 or st.sidebar.button("Clear message history"):
@@ -102,6 +106,6 @@ if user_query := st.chat_input(placeholder="Ask me anything!"):
     st.chat_message("user").write(user_query)
 
     with st.chat_message("assistant"):
-        retrieval_handler = PrintRetrievalHandler(st.container())
+        # retrieval_handler = PrintRetrievalHandler(st.container())
         stream_handler = StreamHandler(st.empty())
-        response = qa_chain.run(user_query, callbacks=[retrieval_handler, stream_handler])
+        response = qa_chain.run(user_query, callbacks=[stream_handler])
