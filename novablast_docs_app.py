@@ -89,7 +89,6 @@ CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
 qa_chain = ConversationalRetrievalChain.from_llm(
     llm, 
     retriever=retriever, 
-    condense_questions_llm=condense_questions_llm,
     condense_question_prompt=CONDENSE_QUESTION_PROMPT,
     memory=memory,
     verbose=True
