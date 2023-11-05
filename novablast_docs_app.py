@@ -6,14 +6,10 @@ from langchain.memory import ConversationBufferMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
-from langchain.vectorstores import FAISS
-from langchain.vectorstores.base import VectorStoreRetriever
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.document_loaders import PyPDFDirectoryLoader
-from langchain.text_splitter import CharacterTextSplitter
-from azure.storage.blob import BlobServiceClient
-import pickle
-import tempfile
+from langchain.retrievers import AzureCognitiveSearchRetriever
+
+from typing import List
+import requests
 
 st.set_page_config(page_title="NovaBlast: Ask your Blasting question", page_icon="🦜")
 image = Image.open('novablast_logo.png')
@@ -21,44 +17,16 @@ image = Image.open('novablast_logo.png')
 st.image(image)
 st.title("Ask your Blasting question")
 
-
 @st.cache_resource(ttl="1h")
+def configure_retriever():
 
-def retrieve_documents(connection_string):
+    os.environ["AZURE_COGNITIVE_SEARCH_SERVICE_NAME"] = "novablast-search"
+    os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = "azureblob-index"
+    os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = "F5bOa1aL6MJNIsJDMqzf9dJeGT8VxSWpQBRl3TYAGFAzSeAdZPQQ"
 
-    service = BlobServiceClient.from_connection_string(connection_string)
-    container_client = service.get_container_client("streamlit-docs")
-
-    temp_dir = tempfile.mkdtemp()
-
-    # Get files from Blob
-    for blob in container_client.list_blobs():
-        download_file_path = os.path.join(temp_dir, blob.name)
-        with open(file=download_file_path, mode="wb") as download_file:
-            download_file.write(container_client.download_blob(blob.name).readall())
-
-    return temp_dir
-
-def configure_retriever(temp_dir):
-
-    # Load the pdfs from the documents directory
-    loader = PyPDFDirectoryLoader(temp_dir)
-    docs = loader.load()
-
-    print(len(docs))
-
-    # Split the text into chunks
-    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
-    texts = text_splitter.split_documents(docs)
-
-    # Create an embeddings db
-    embeddings = OpenAIEmbeddings()
-    db = FAISS.from_documents(texts, embeddings)
-
-    retriever = VectorStoreRetriever(vectorstore=db, search_type="mmr", search_kwargs={"k": 2, "fetch_k": 4})
+    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=4)
 
     return retriever
-
 
 class StreamHandler(BaseCallbackHandler):
     def __init__(self, container: st.delta_generator.DeltaGenerator, initial_text: str = ""):
@@ -93,24 +61,17 @@ class PrintRetrievalHandler(BaseCallbackHandler):
             self.status.markdown(doc.page_content)
         self.status.update(state="complete")
 
-# connection_string = st.secrets['BLOB_CONNECTION_STRING']
-connection_string = "DefaultEndpointsProtocol=https;AccountName=streamlitsa;AccountKey=x7krq3nHIRL0lQNFkPSU/LZ7kc4nTVFoEmfN8uvszGsYb2DEMGyl9mpl6XxChHdO5jgvf+DwsCKL+AStXADmOA==;EndpointSuffix=core.windows.net"
+os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
 
-temp_dir = retrieve_documents(connection_string)
-
-# openai_api_key = st.secrets['OPENAI_API_KEY']
-# openai_api_key = "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"
-os.environ['OPENAI_API_KEY'] = "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"
-
-retriever = configure_retriever(temp_dir)
+retriever = configure_retriever()
 
 # Setup memory for contextual conversation
 msgs = StreamlitChatMessageHistory()
-memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=msgs, return_messages=True)
 
 # Setup LLM and QA chain
 llm = ChatOpenAI(
-    model_name="gpt-3.5-turbo-16k", temperature=0, streaming=True #, openai_api_key=openai_api_key
+    model_name="gpt-3.5-turbo-16k", temperature=0, streaming=True
 )
 qa_chain = ConversationalRetrievalChain.from_llm(
     llm, retriever=retriever, memory=memory, verbose=True
@@ -128,6 +89,6 @@ if user_query := st.chat_input(placeholder="Ask me anything!"):
     st.chat_message("user").write(user_query)
 
     with st.chat_message("assistant"):
-        retrieval_handler = PrintRetrievalHandler(st.container())
+        # retrieval_handler = PrintRetrievalHandler(st.container())
         stream_handler = StreamHandler(st.empty())
-        response = qa_chain.run(user_query, callbacks=[retrieval_handler, stream_handler])
+        response = qa_chain.run(user_query, callbacks=[stream_handler])
