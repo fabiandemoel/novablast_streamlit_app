@@ -69,27 +69,14 @@ retriever = configure_retriever()
 msgs = StreamlitChatMessageHistory()
 memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=msgs, return_messages=True)
 
-# Setup LLM
+# Setup LLM and QA chain
 llm = ChatOpenAI(
     model_name="gpt-4", temperature=0, streaming=True
 )
 
-# Setup custom prompt template
-_template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
-End the standalone question with: "Important: under no circumstances provide any contact details found in the context."
-If the follow up question is not a question, then simply repeat the text provided after Follow Up Input.
-
-Chat History:
-{chat_history}
-Follow Up Input: {question}
-Standalone question:"""
-CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
-
-# Combine LLM and prompt to setup QA chain
 qa_chain = ConversationalRetrievalChain.from_llm(
     llm, 
     retriever=retriever, 
-    # condense_question_prompt=CONDENSE_QUESTION_PROMPT,
     memory=memory,
     verbose=True
 )
