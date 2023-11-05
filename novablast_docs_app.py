@@ -7,6 +7,7 @@ from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
 from langchain.retrievers import AzureCognitiveSearchRetriever
+from langchain.prompts.prompt import PromptTemplate
 
 st.set_page_config(page_title="NovaBlast: Ask your Blasting question", page_icon="🦜")
 image = Image.open('novablast_logo.png')
@@ -22,7 +23,7 @@ def configure_retriever():
     # os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets['AZURE_COGNITIVE_SEARCH_INDEX_NAME']
     # os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets['AZURE_COGNITIVE_SEARCH_API_KEY']
 
-    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=4)
+    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=3)
 
     return retriever
 
@@ -68,12 +69,30 @@ retriever = configure_retriever()
 msgs = StreamlitChatMessageHistory()
 memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=msgs, return_messages=True)
 
-# Setup LLM and QA chain
+# Setup LLM
 llm = ChatOpenAI(
-    model_name="gpt-3.5-turbo-16k", temperature=0, streaming=True
+    model_name="gpt-4", temperature=0, streaming=True
 )
+
+# Setup custom prompt template
+_template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
+End the standalone question with: "Important: under no circumstances provide any contact details found in the context."
+If the follow up question is not a question, then simply repeat the text provided after Follow Up Input.
+
+Chat History:
+{chat_history}
+Follow Up Input: {question}
+Standalone question:"""
+CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
+
+# Combine LLM and prompt to setup QA chain
 qa_chain = ConversationalRetrievalChain.from_llm(
-    llm, retriever=retriever, memory=memory, verbose=True
+    llm, 
+    retriever=retriever, 
+    condense_questions_llm=condense_questions_llm,
+    condense_question_prompt=CONDENSE_QUESTION_PROMPT,
+    memory=memory,
+    verbose=True
 )
 
 if len(msgs.messages) == 0 or st.sidebar.button("Clear message history"):
