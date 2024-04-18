@@ -19,11 +19,11 @@ st.title("Ask your Blasting question")
 def configure_retriever():
 
     # Set secrets through Streamlit
-    # os.environ["AZURE_COGNITIVE_SEARCH_SERVICE_NAME"] = st.secrets['AZURE_COGNITIVE_SEARCH_SERVICE_NAME']
-    # os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets['AZURE_COGNITIVE_SEARCH_INDEX_NAME']
-    # os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets['AZURE_COGNITIVE_SEARCH_API_KEY']
+    os.environ["AZURE_COGNITIVE_SEARCH_SERVICE_NAME"] = st.secrets.AZ_COG_SEARCH['SERVICE_NAME']
+    os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets.AZ_COG_SEARCH['INDEX_NAME']
+    os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets.AZ_COG_SEARCH['API_KEY']
 
-    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=3)
+    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=20)
 
     return retriever
 
@@ -61,7 +61,7 @@ class PrintRetrievalHandler(BaseCallbackHandler):
         self.status.update(state="complete")
 
 # Set env variables through Streamlit
-# os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
+os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
 
 retriever = configure_retriever()
 
@@ -70,12 +70,12 @@ msgs = StreamlitChatMessageHistory()
 memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=msgs, return_messages=True)
 
 # Setup LLM and QA chain
-llm = ChatOpenAI(
-    model_name="gpt-4-1106-preview", temperature=0, streaming=True
+llm_4 = ChatOpenAI(
+    model_name="gpt-4-turbo", temperature=0, streaming=True
 )
 
 qa_chain = ConversationalRetrievalChain.from_llm(
-    llm, 
+    llm_4, 
     retriever=retriever, 
     memory=memory,
     verbose=True
@@ -93,6 +93,7 @@ if user_query := st.chat_input(placeholder="Ask me anything!"):
     st.chat_message("user").write(user_query)
 
     with st.chat_message("assistant"):
-        # retrieval_handler = PrintRetrievalHandler(st.container())
+        retrieval_handler = PrintRetrievalHandler(st.container())
         stream_handler = StreamHandler(st.empty())
-        response = qa_chain.run(user_query, callbacks=[stream_handler])
+
+        response = qa_chain.run(user_query, callbacks=[retrieval_handler, stream_handler])
