@@ -23,7 +23,7 @@ def configure_retriever():
     os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets.AZ_COG_SEARCH['INDEX_NAME']
     os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets.AZ_COG_SEARCH['API_KEY']
 
-    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=20)
+    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=st.secrets['TOP_K'])
 
     return retriever
 
