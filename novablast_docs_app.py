@@ -19,9 +19,9 @@ st.title("Ask your Blasting question")
 def configure_retriever():
 
     # Set secrets through Streamlit
-    os.environ["AZURE_COGNITIVE_SEARCH_SERVICE_NAME"] = st.secrets.AZ_COG_SEARCH['SERVICE_NAME']
-    os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets.AZ_COG_SEARCH['INDEX_NAME']
-    os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets.AZ_COG_SEARCH['API_KEY']
+    # os.environ["AZURE_COGNITIVE_SEARCH_SERVICE_NAME"] = st.secrets.AZ_COG_SEARCH['SERVICE_NAME']
+    # os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets.AZ_COG_SEARCH['INDEX_NAME']
+    # os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets.AZ_COG_SEARCH['API_KEY']
 
     retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=st.secrets['TOP_K'])
 
@@ -61,7 +61,7 @@ class PrintRetrievalHandler(BaseCallbackHandler):
         self.status.update(state="complete")
 
 # Set env variables through Streamlit
-os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
+# os.environ["OPENAI_API_KEY"] = st.secrets['OPENAI_API_KEY']
 
 retriever = configure_retriever()
 
