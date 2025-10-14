@@ -1,0 +1,1 @@
+web: sh setup.sh && streamlit run novablast_docs_app.py
