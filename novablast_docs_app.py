@@ -23,7 +23,7 @@ def configure_retriever():
     # os.environ["AZURE_COGNITIVE_SEARCH_INDEX_NAME"] = st.secrets.AZ_COG_SEARCH['INDEX_NAME']
     # os.environ["AZURE_COGNITIVE_SEARCH_API_KEY"] = st.secrets.AZ_COG_SEARCH['API_KEY']
 
-    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=st.secrets['TOP_K'])
+    retriever = AzureCognitiveSearchRetriever(content_key="content", top_k=os.environ['TOP_K'])
 
     return retriever
 
@@ -71,7 +71,7 @@ memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=msgs, r
 
 # Setup LLM and QA chain
 llm_4 = ChatOpenAI(
-    model_name=st.secrets['OPENAI_API_MODEL'], temperature=0, streaming=True
+    model_name=os.environ['OPENAI_API_MODEL'], temperature=0, streaming=True
 )
 
 qa_chain = ConversationalRetrievalChain.from_llm(
