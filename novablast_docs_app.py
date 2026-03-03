@@ -9,7 +9,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.retrievers import AzureCognitiveSearchRetriever
 from langchain.prompts.prompt import PromptTemplate
 
-st.set_page_config(page_title="NovaBlast: Ask your Blasting question", page_icon="🦜")
+st.set_page_config(page_title="NovaBlast: Ask your Blasting question!", page_icon="🦜")
 image = Image.open('novablast_logo.png')
 
 st.image(image)
